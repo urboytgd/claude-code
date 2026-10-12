@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Graph Paper Tic-Tac-Toe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+  /* Layout: a single sheet of graph paper; hand-drawn board centered, tally-mark score beneath, mode switch on top. */
+  :root {
+    --paper: #f5f8f6;
+    --grid: rgba(58, 104, 150, 0.13);
+    --ink: #1f2a40;
+    --muted: #5a6479;
+    --x: #cc2f3c;
+    --o: #1d5ba6;
+    --chip: rgba(31, 42, 64, 0.06);
+    --font-hand: "Caveat", "Segoe Print", "Bradley Hand", cursive;
+    --font-ui: "Atkinson Hyperlegible", system-ui, -apple-system, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #141a25; --grid: rgba(140, 170, 220, 0.09); --ink: #e4e8f0; --muted: #97a1b6;
+      --x: #ff7b7b; --o: #80b4ff; --chip: rgba(228, 232, 240, 0.08); color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141a25; --grid: rgba(140, 170, 220, 0.09); --ink: #e4e8f0; --muted: #97a1b6;
+    --x: #ff7b7b; --o: #80b4ff; --chip: rgba(228, 232, 240, 0.08); color-scheme: dark;
+  }
+
+  html, body { min-height: 100%; }
+  body {
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 22px 22px;
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 16px;
+  }
+  main {
+    max-width: 480px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 28px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+  }
+  h1 {
+    font-family: var(--font-hand);
+    font-weight: 700;
+    font-size: 2.6rem;
+    line-height: 1;
+    margin: 0;
+    text-wrap: balance;
+    text-align: center;
+  }
+  h1 .x { color: var(--x); }
+  h1 .o { color: var(--o); }
+
+  .modes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--chip);
+  }
+  .modes button {
+    font: inherit;
+    font-size: 0.9rem;
+    color: var(--muted);
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  .modes button[aria-pressed="true"] {
+    background: var(--paper);
+    color: var(--ink);
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  }
+
+  .status {
+    font-family: var(--font-hand);
+    font-size: 1.9rem;
+    font-weight: 700;
+    min-height: 2.4rem;
+    margin: 0;
+    text-align: center;
+  }
+  .status .x { color: var(--x); }
+  .status .o { color: var(--o); }
+
+  .board {
+    position: relative;
+    width: min(100%, 380px);
+    aspect-ratio: 1;
+    max-width: 100%;
+  }
+  .board > svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .grid-lines path { stroke: var(--ink); stroke-width: 3.2; fill: none; stroke-linecap: round; opacity: 0.85; }
+  .cells {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+  }
+  .cell {
+    background: transparent;
+    border: 0;
+    padding: 12%;
+    cursor: pointer;
+    border-radius: 10px;
+  }
+  .cell:disabled { cursor: default; }
+  .cell:not(:disabled):hover { background: var(--chip); }
+  .cell:focus-visible { outline: 2px dashed var(--muted); outline-offset: -6px; }
+  .cell svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .mark path { fill: none; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.28s ease-out forwards; }
+  .mark.x path { stroke: var(--x); }
+  .mark.x path + path { animation-delay: 0.16s; }
+  .mark.o path { stroke: var(--o); animation-duration: 0.42s; }
+  .cell.dim svg { opacity: 0.3; transition: opacity 0.4s; }
+  .win-line line { stroke: var(--ink); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.45s 0.25s ease-in-out forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  .score {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    width: 100%;
+  }
+  .tally {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+  .tally .label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .tally .count { font-family: var(--font-hand); font-size: 2rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .tally.x .count { color: var(--x); }
+  .tally.o .count { color: var(--o); }
+  .tally svg { height: 22px; max-width: 100%; }
+  .tally svg line { stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; opacity: 0.7; }
+
+  .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .btn {
+    font: inherit;
+    font-weight: 700;
+    color: var(--paper);
+    background: var(--ink);
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 18px;
+    cursor: pointer;
+  }
+  .btn.ghost { background: transparent; color: var(--muted); font-weight: 400; text-decoration: underline; text-underline-offset: 3px; }
+  .btn:focus-visible, .modes button:focus-visible { outline: 2px solid var(--o); outline-offset: 2px; }
+  .hint { font-size: 0.85rem; color: var(--muted); margin: 0; text-align: center; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mark path, .win-line line { animation: none; stroke-dashoffset: 0; }
+  }
+</style>
+
+<main>
+  <h1><span class="x">X</span>s &amp; <span class="o">O</span>s</h1>
+
+  <div class="modes" role="group" aria-label="Opponent">
+    <button type="button" id="mode-hard" data-mode="hard">vs Computer</button>
+    <button type="button" id="mode-easy" data-mode="easy">vs Computer (easy)</button>
+    <button type="button" id="mode-pvp" data-mode="pvp">2 players</button>
+  </div>
+
+  <p class="status" id="status" aria-live="polite"></p>
+
+  <div class="board">
+    <svg class="grid-lines" viewBox="0 0 300 300" aria-hidden="true">
+      <path d="M101 8 C 98 90, 103 190, 100 292" />
+      <path d="M200 6 C 202 100, 197 200, 201 294" />
+      <path d="M7 100 C 90 102, 200 97, 293 101" />
+      <path d="M9 201 C 100 198, 210 203, 292 199" />
+    </svg>
+    <div class="cells" id="cells"></div>
+    <svg class="win-line" id="win-line" viewBox="0 0 300 300" aria-hidden="true"></svg>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn" id="next">New round</button>
+    <button type="button" class="btn ghost" id="reset">Reset score</button>
+  </div>
+
+  <div class="score" id="score"></div>
+
+  <p class="hint" id="hint"></p>
+</main>
+
+<script>
+(() => {
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const X_PATHS = ['M22 24 C 40 41, 61 60, 78 79', 'M78 22 C 61 41, 41 61, 23 79'];
+  const O_PATH = 'M52 17 C 73 17, 83 34, 82 51 C 81 70, 66 83, 49 83 C 30 82, 18 67, 19 49 C 20 31, 33 18, 56 21';
+  const CPU_DELAY = 450;
+
+  const $ = (id) => document.getElementById(id);
+  const cellsEl = $('cells'), statusEl = $('status'), winEl = $('win-line'), scoreEl = $('score'), hintEl = $('hint');
+
+  let state;
+  let cpuTimer = null;
+
+  function freshState(mode = 'hard') {
+    return { mode, board: Array(9).fill(null), turn: 'X', starter: 'X', score: { X: 0, O: 0, draw: 0 }, result: null };
+  }
+
+  function outcome(b) {
+    for (const line of LINES) {
+      const [a, c, d] = line;
+      if (b[a] && b[a] === b[c] && b[a] === b[d]) return { winner: b[a], line };
+    }
+    return b.every(Boolean) ? { winner: null, line: null } : null;
+  }
+
+  // Perfect play via minimax; ties broken randomly so games vary.
+  function minimax(b, turn, depth) {
+    const r = outcome(b);
+    if (r) return r.winner === 'O' ? 10 - depth : r.winner === 'X' ? depth - 10 : 0;
+    let best = turn === 'O' ? -Infinity : Infinity;
+    for (let i = 0; i < 9; i++) {
+      if (b[i]) continue;
+      b[i] = turn;
+      const s = minimax(b, turn === 'O' ? 'X' : 'O', depth + 1);
+      b[i] = null;
+      best = turn === 'O' ? Math.max(best, s) : Math.min(best, s);
+    }
+    return best;
+  }
+
+  function cpuPick(b, mode) {
+    const empty = b.map((v, i) => (v ? -1 : i)).filter((i) => i >= 0);
+    if (mode === 'easy' && Math.random() < 0.65) return empty[Math.floor(Math.random() * empty.length)];
+    let bestScore = -Infinity, picks = [];
+    for (const i of empty) {
+      b[i] = 'O';
+      const s = minimax(b, 'X', 1);
+      b[i] = null;
+      if (s > bestScore) { bestScore = s; picks = [i]; }
+      else if (s === bestScore) picks.push(i);
+    }
+    return picks[Math.floor(Math.random() * picks.length)];
+  }
+
+  const vsCpu = () => state.mode !== 'pvp';
+  const nameOf = (p) => (vsCpu() ? (p === 'X' ? 'You' : 'Computer') : `Player ${p}`);
+  const cpuTurn = () => vsCpu() && state.turn === 'O' && !state.result;
+
+  function play(i) {
+    if (state.result || state.board[i]) return;
+    state.board[i] = state.turn;
+    const r = outcome(state.board);
+    if (r) {
+      state.result = r;
+      if (r.winner) state.score[r.winner]++;
+      else state.score.draw++;
+    } else {
+      state.turn = state.turn === 'X' ? 'O' : 'X';
+    }
+    render({ animate: i });
+    scheduleCpu();
+  }
+
+  function scheduleCpu() {
+    clearTimeout(cpuTimer);
+    if (cpuTurn()) cpuTimer = setTimeout(() => play(cpuPick(state.board, state.mode)), CPU_DELAY);
+  }
+
+  function newRound() {
+    state.starter = state.starter === 'X' ? 'O' : 'X';
+    state.board = Array(9).fill(null);
+    state.turn = state.starter;
+    state.result = null;
+    render();
+    scheduleCpu();
+  }
+
+  function setMode(mode) {
+    clearTimeout(cpuTimer);
+    state = freshState(mode);
+    render();
+  }
+
+  function markSvg(p, animate) {
+    const paths = (p === 'X' ? X_PATHS : [O_PATH]).map((d) => `<path d="${d}" pathLength="1"/>`).join('');
+    return `<svg viewBox="0 0 100 100" class="mark ${p.toLowerCase()}${animate ? '' : ' still'}">${paths}</svg>`;
+  }
+
+  function tallySvg(n) {
+    if (n === 0) return '<svg viewBox="0 0 10 22" width="10"></svg>';
+    const shown = Math.min(n, 15);
+    let lines = '', x = 3;
+    for (let g = 0; g < Math.ceil(shown / 5); g++) {
+      const inGroup = Math.min(5, shown - g * 5);
+      const start = x;
+      for (let k = 0; k < Math.min(inGroup, 4); k++) { lines += `<line x1="${x}" y1="3" x2="${x + 0.6}" y2="19"/>`; x += 6; }
+      if (inGroup === 5) lines += `<line x1="${start - 2}" y1="16" x2="${x - 4}" y2="6"/>`;
+      x += 6;
+    }
+    return `<svg viewBox="0 0 ${x} 22" width="${x}">${lines}</svg>`;
+  }
+
+  function render({ animate = -1 } = {}) {
+    document.querySelectorAll('.modes button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
+
+    const r = state.result;
+    cellsEl.innerHTML = '';
+    state.board.forEach((v, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cell';
+      btn.id = `cell-${i}`;
+      btn.dataset.i = i;
+      btn.setAttribute('aria-label', `Row ${Math.floor(i / 3) + 1}, column ${(i % 3) + 1}, ${v || 'empty'}`);
+      btn.disabled = Boolean(v || r || cpuTurn());
+      if (v) btn.innerHTML = markSvg(v, i === animate);
+      if (r && r.line && !r.line.includes(i)) btn.classList.add('dim');
+      cellsEl.appendChild(btn);
+    });
+    // Marks that were already on the board should appear fully drawn.
+    cellsEl.querySelectorAll('.mark.still path').forEach((p) => { p.style.animation = 'none'; p.style.strokeDashoffset = '0'; });
+
+    if (r && r.line) {
+      const c = (k) => [50 + (k % 3) * 100, 50 + Math.floor(k / 3) * 100];
+      const [a, b] = [c(r.line[0]), c(r.line[2])];
+      const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy), ext = 34;
+      const ux = (dx / len) * ext, uy = (dy / len) * ext;
+      const still = animate === -1 ? ' style="animation:none;stroke-dashoffset:0"' : '';
+      winEl.innerHTML = `<line x1="${a[0] - ux}" y1="${a[1] - uy}" x2="${b[0] + ux}" y2="${b[1] + uy}" pathLength="1"${still}/>`;
+    } else {
+      winEl.innerHTML = '';
+    }
+
+    const tag = (p) => `<span class="${p.toLowerCase()}">${p}</span>`;
+    if (r) {
+      if (!r.winner) statusEl.innerHTML = 'Cat’s game. It’s a draw.';
+      else if (vsCpu()) statusEl.innerHTML = r.winner === 'X' ? `You win! ${tag('X')}` : `Computer wins ${tag('O')}`;
+      else statusEl.innerHTML = `Player ${tag(r.winner)} wins!`;
+    } else if (cpuTurn()) {
+      statusEl.innerHTML = `Computer is thinking…`;
+    } else if (vsCpu()) {
+      statusEl.innerHTML = `Your move (${tag('X')})`;
+    } else {
+      statusEl.innerHTML = `${tag(state.turn)} to move`;
+    }
+
+    const s = state.score;
+    scoreEl.innerHTML = [
+      ['x', nameOf('X'), s.X],
+      ['', 'Draws', s.draw],
+      ['o', nameOf('O'), s.O],
+    ].map(([cls, label, n]) => `
+      <div class="tally ${cls}">
+        <span class="label">${label}</span>
+        <span class="count">${n}</span>
+        ${tallySvg(n)}
+      </div>`).join('');
+
+    hintEl.textContent = state.mode === 'hard'
+      ? 'This computer never loses. The best you can do is a draw.'
+      : state.mode === 'easy'
+        ? 'This computer plays loosely. You can beat it.'
+        : 'Pass the device back and forth. Who starts alternates each round.';
+  }
+
+  cellsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cell');
+    if (!btn || btn.disabled) return;
+    play(Number(btn.dataset.i));
+    const next = document.getElementById(btn.id);
+    if (next && !next.disabled) next.focus();
+  });
+
+  // Arrow keys move between squares.
+  cellsEl.addEventListener('keydown', (e) => {
+    const btn = e.target.closest('.cell');
+    if (!btn) return;
+    const i = Number(btn.dataset.i);
+    const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -3, ArrowDown: 3 };
+    if (!(e.key in moves)) return;
+    const j = i + moves[e.key];
+    if (j < 0 || j > 8 || (Math.abs(moves[e.key]) === 1 && Math.floor(j / 3) !== Math.floor(i / 3))) return;
+    e.preventDefault();
+    const target = $(`cell-${j}`);
+    target.focus();
+  });
+
+  document.querySelectorAll('.modes button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  $('next').addEventListener('click', newRound);
+  $('reset').addEventListener('click', () => { state.score = { X: 0, O: 0, draw: 0 }; render(); });
+
+  function start(data) {
+    state = data && Array.isArray(data.board) && data.board.length === 9 ? data : freshState();
+    render();
+    scheduleCpu();
+  }
+
+  window.claude?.hot?.snapshot?.(() => state);
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</html>
