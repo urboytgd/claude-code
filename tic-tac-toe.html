@@ -30,6 +30,7 @@
     --x: #ff7b7b; --o: #80b4ff; --chip: rgba(228, 232, 240, 0.08); color-scheme: dark;
   }
 
+  [hidden] { display: none !important; }
   html, body { min-height: 100%; }
   body {
     background-color: var(--paper);
@@ -51,7 +52,14 @@
     align-items: center;
     gap: 22px;
   }
+  header {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+  }
   h1 {
+    grid-column: 2;
     font-family: var(--font-hand);
     font-weight: 700;
     font-size: 2.6rem;
@@ -62,6 +70,20 @@
   }
   h1 .x { color: var(--x); }
   h1 .o { color: var(--o); }
+  .mute {
+    justify-self: end;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .mute:hover { background: var(--chip); color: var(--ink); }
+  .mute svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
   .modes {
     display: flex;
@@ -69,7 +91,7 @@
     justify-content: center;
     gap: 6px;
     padding: 4px;
-    border-radius: 999px;
+    border-radius: 22px;
     background: var(--chip);
   }
   .modes button {
@@ -88,6 +110,49 @@
     font-weight: 700;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   }
+
+  .online {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+  }
+  .online p { margin: 0; }
+  .row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; }
+  .join input {
+    font: inherit;
+    font-family: var(--font-hand);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    width: 7.5ch;
+    text-align: center;
+    color: var(--ink);
+    background: var(--paper);
+    border: 2px solid var(--muted);
+    border-radius: 8px;
+    padding: 2px 8px;
+  }
+  .join input:focus-visible { outline: 2px solid var(--o); outline-offset: 2px; }
+  .join label { color: var(--muted); font-size: 0.9rem; }
+  .invite-link {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.8rem;
+    background: var(--chip);
+    border-radius: 6px;
+    padding: 8px 10px;
+    user-select: all;
+  }
+  .code { font-family: var(--font-hand); font-size: 2rem; font-weight: 700; letter-spacing: 0.15em; }
+  .versus { font-size: 0.95rem; color: var(--muted); }
+  .versus strong { color: var(--ink); }
+  .error { color: var(--x); font-size: 0.9rem; }
 
   .status {
     font-family: var(--font-hand);
@@ -147,7 +212,7 @@
     gap: 4px;
     min-width: 0;
   }
-  .tally .label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .tally .label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); text-align: center; overflow-wrap: anywhere; }
   .tally .count { font-family: var(--font-hand); font-size: 2rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
   .tally.x .count { color: var(--x); }
   .tally.o .count { color: var(--o); }
@@ -165,9 +230,10 @@
     padding: 10px 18px;
     cursor: pointer;
   }
+  .btn.small { padding: 6px 12px; font-size: 0.9rem; }
   .btn.ghost { background: transparent; color: var(--muted); font-weight: 400; text-decoration: underline; text-underline-offset: 3px; }
-  .btn:focus-visible, .modes button:focus-visible { outline: 2px solid var(--o); outline-offset: 2px; }
-  .hint { font-size: 0.85rem; color: var(--muted); margin: 0; text-align: center; }
+  .btn:focus-visible, .modes button:focus-visible, .mute:focus-visible { outline: 2px solid var(--o); outline-offset: 2px; }
+  .hint { font-size: 0.85rem; color: var(--muted); margin: 0; text-align: center; max-width: 42ch; }
 
   @media (prefers-reduced-motion: reduce) {
     .mark path, .win-line line { animation: none; stroke-dashoffset: 0; }
@@ -175,13 +241,41 @@
 </style>
 
 <main>
-  <h1><span class="x">X</span>s &amp; <span class="o">O</span>s</h1>
+  <header>
+    <h1><span class="x">X</span>s &amp; <span class="o">O</span>s</h1>
+    <button type="button" class="mute" id="mute" aria-label="Sound on" aria-pressed="false"></button>
+  </header>
 
   <div class="modes" role="group" aria-label="Opponent">
     <button type="button" id="mode-hard" data-mode="hard">vs Computer</button>
     <button type="button" id="mode-easy" data-mode="easy">vs Computer (easy)</button>
     <button type="button" id="mode-pvp" data-mode="pvp">2 players</button>
+    <button type="button" id="mode-online" data-mode="online">Play online</button>
   </div>
+
+  <section class="online" id="online" hidden>
+    <div class="online" id="lobby">
+      <button type="button" class="btn" id="create">Start a game</button>
+      <form class="row join" id="join-form">
+        <label for="join-code">Have a code?</label>
+        <input id="join-code" maxlength="5" autocomplete="off" spellcheck="false" placeholder="ABCDE">
+        <button type="submit" class="btn small">Join</button>
+      </form>
+    </div>
+    <div class="online" id="invite" hidden>
+      <p>Send this link to a friend:</p>
+      <div class="row">
+        <span class="invite-link" id="invite-link"></span>
+        <button type="button" class="btn small" id="copy">Copy</button>
+      </div>
+      <p class="versus">or have them enter the code <span class="code" id="invite-code"></span></p>
+    </div>
+    <div class="row" id="ingame" hidden>
+      <span class="versus" id="versus"></span>
+      <button type="button" class="btn ghost" id="leave">Leave game</button>
+    </div>
+    <p class="error" id="online-error" role="alert" hidden></p>
+  </section>
 
   <p class="status" id="status" aria-live="polite"></p>
 
@@ -206,12 +300,14 @@
   <p class="hint" id="hint"></p>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (() => {
   const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
   const X_PATHS = ['M22 24 C 40 41, 61 60, 78 79', 'M78 22 C 61 41, 41 61, 23 79'];
   const O_PATH = 'M52 17 C 73 17, 83 34, 82 51 C 81 70, 66 83, 49 83 C 30 82, 18 67, 19 49 C 20 31, 33 18, 56 21';
   const CPU_DELAY = 450;
+  const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
   const $ = (id) => document.getElementById(id);
   const cellsEl = $('cells'), statusEl = $('status'), winEl = $('win-line'), scoreEl = $('score'), hintEl = $('hint');
@@ -260,23 +356,315 @@
     return picks[Math.floor(Math.random() * picks.length)];
   }
 
-  const vsCpu = () => state.mode !== 'pvp';
-  const nameOf = (p) => (vsCpu() ? (p === 'X' ? 'You' : 'Computer') : `Player ${p}`);
+  // ---------- Sound (synthesized with Web Audio, no files) ----------
+  let actx = null;
+  let muted = false;
+  try { muted = localStorage.getItem('ttt-muted') === '1'; } catch {}
+
+  function audio() {
+    if (muted) return null;
+    if (!actx) {
+      try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
+    }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+
+  function scratch(freq, delay, dur) {
+    const ctx = audio();
+    if (!ctx) return;
+    const len = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (0.6 + 0.4 * Math.sin(i / 90));
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = freq;
+    filter.Q.value = 0.9;
+    const gain = ctx.createGain();
+    const t = ctx.currentTime + delay;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start(t);
+  }
+
+  function tone(freq, delay, dur, type = 'sine', vol = 0.16) {
+    const ctx = audio();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.value = freq;
+    const gain = ctx.createGain();
+    const t = ctx.currentTime + delay;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
+  }
+
+  const sounds = {
+    mark(p) {
+      if (p === 'X') { scratch(2600, 0, 0.16); scratch(2300, 0.16, 0.16); }
+      else scratch(1700, 0, 0.38);
+    },
+    win() { tone(523, 0.3, 0.2); tone(659, 0.42, 0.2); tone(784, 0.54, 0.45); },
+    lose() { tone(392, 0.3, 0.25, 'triangle'); tone(311, 0.5, 0.5, 'triangle'); },
+    draw() { tone(262, 0.3, 0.5, 'triangle', 0.12); },
+    joined() { tone(880, 0, 0.09); tone(1175, 0.08, 0.14); },
+  };
+
+  // Sounds for a finished round, from this viewer's point of view.
+  function resultSound(r) {
+    if (!r.winner) return sounds.draw();
+    const mine = state.mode === 'online' ? online.seat : vsCpu() ? 'X' : null;
+    if (mine && r.winner !== mine) sounds.lose();
+    else sounds.win();
+  }
+
+  const SPEAKER = '<path d="M11 5 6 9H3v6h3l5 4z"/>';
+  function renderMute() {
+    const btn = $('mute');
+    btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${SPEAKER}${muted
+      ? '<path d="m23 9-6 6M17 9l6 6"/>'
+      : '<path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>'}</svg>`;
+    btn.setAttribute('aria-pressed', String(muted));
+    btn.setAttribute('aria-label', muted ? 'Sound off. Turn sound on' : 'Sound on. Turn sound off');
+  }
+
+  $('mute').addEventListener('click', () => {
+    muted = !muted;
+    try { localStorage.setItem('ttt-muted', muted ? '1' : '0'); } catch {}
+    renderMute();
+    if (!muted) tone(660, 0, 0.1);
+  });
+
+  // ---------- Online play (direct browser-to-browser connection via PeerJS) ----------
+  // PeerJS's free public server only introduces the two browsers; moves then go directly between them.
+  const PEER_PREFIX = 'graph-paper-ttt-';
+  const online = { code: null, seat: null, peer: null, conn: null, ready: false, connected: false, error: '' };
+
+  function randomCode() {
+    let s = '';
+    for (let i = 0; i < 5; i++) s += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+    return s;
+  }
+
+  function sendState() {
+    if (!online.conn || !online.connected) return;
+    const { board, turn, starter, score } = state;
+    try {
+      online.conn.send({ type: 'state', board, turn, starter, score });
+    } catch {
+      online.error = 'Couldn’t send your move. Your friend may have disconnected.';
+      render();
+    }
+  }
+
+  // Messages come from another browser, so check their shape before using them.
+  function validState(m) {
+    const mark = (v) => v === 'X' || v === 'O';
+    return m && m.type === 'state' && Array.isArray(m.board) && m.board.length === 9
+      && m.board.every((v) => v === null || mark(v)) && mark(m.turn) && mark(m.starter)
+      && m.score && ['X', 'O', 'draw'].every((k) => Number.isInteger(m.score[k]) && m.score[k] >= 0);
+  }
+
+  function receiveState(m) {
+    if (!validState(m)) return;
+    const prev = state.board;
+    const hadResult = Boolean(state.result);
+    state = {
+      mode: 'online', board: [...m.board], turn: m.turn, starter: m.starter,
+      result: outcome(m.board), score: { X: m.score.X, O: m.score.O, draw: m.score.draw },
+    };
+    let fresh = -1;
+    state.board.forEach((v, i) => { if (v && !prev[i]) fresh = i; });
+    if (fresh >= 0) sounds.mark(state.board[fresh]);
+    if (state.result && !hadResult && fresh >= 0) resultSound(state.result);
+    render({ animate: fresh });
+  }
+
+  function attach(conn) {
+    online.conn = conn;
+    conn.on('open', () => {
+      if (online.conn !== conn) return;
+      online.connected = true;
+      online.error = '';
+      if (online.seat === 'X') { sounds.joined(); sendState(); }
+      render();
+    });
+    conn.on('data', (m) => {
+      if (online.conn !== conn) return;
+      if (m && m.type === 'full') {
+        teardown();
+        online.error = 'That game already has two players. Ask your friend for a new link.';
+        render();
+        return;
+      }
+      receiveState(m);
+    });
+    conn.on('close', () => {
+      if (online.conn !== conn) return;
+      online.conn = null;
+      online.connected = false;
+      if (online.seat === 'X') {
+        online.error = 'Your friend left. Send the link again to keep playing.';
+      } else {
+        teardown();
+        online.error = 'Your friend closed the game.';
+      }
+      render();
+    });
+  }
+
+  function teardown() {
+    try { online.conn?.close(); } catch {}
+    try { online.peer?.destroy(); } catch {}
+    Object.assign(online, { code: null, seat: null, peer: null, conn: null, ready: false, connected: false });
+  }
+
+  function peerErrorMessage(err, code) {
+    switch (err && err.type) {
+      case 'peer-unavailable': return `There’s no open game with the code ${code}. Ask your friend for a new link.`;
+      case 'browser-incompatible': return 'This browser can’t play online. Try a recent Chrome, Firefox, Safari or Edge.';
+      case 'network': case 'server-error': case 'socket-error': case 'socket-closed':
+        return 'Couldn’t reach the matchmaking server. Check your connection and try again.';
+      default: return 'Couldn’t connect to your friend. Try again.';
+    }
+  }
+
+  function peerReady() {
+    if (window.Peer) return true;
+    online.error = 'Online play couldn’t load. Check your connection and reload the page.';
+    render();
+    return false;
+  }
+
+  function watchPeer(peer, code, onError) {
+    peer.on('disconnected', () => { if (online.peer === peer && !peer.destroyed) peer.reconnect(); });
+    peer.on('error', (err) => {
+      if (online.peer !== peer) return;
+      if (onError && onError(err)) return;
+      const msg = peerErrorMessage(err, code);
+      if (!online.connected) teardown();
+      online.error = msg;
+      render();
+    });
+  }
+
+  function createGame(attempt = 0) {
+    if (!peerReady()) return;
+    teardown();
+    online.error = '';
+    state = freshState('online');
+    const code = randomCode();
+    const peer = new Peer(PEER_PREFIX + code);
+    Object.assign(online, { code, seat: 'X', peer });
+    render();
+    peer.on('open', () => { if (online.peer === peer) { online.ready = true; render(); } });
+    peer.on('connection', (conn) => {
+      if (online.peer !== peer) return;
+      if (online.conn) {
+        conn.on('open', () => { conn.send({ type: 'full' }); setTimeout(() => conn.close(), 500); });
+        return;
+      }
+      attach(conn);
+    });
+    watchPeer(peer, code, (err) => {
+      // Someone else already has this code: pick another.
+      if (err.type === 'unavailable-id' && attempt < 3) { createGame(attempt + 1); return true; }
+      return false;
+    });
+  }
+
+  function joinGame(code) {
+    code = code.trim().toUpperCase();
+    if (!/^[A-Z2-9]{5}$/.test(code)) {
+      online.error = 'Game codes are 5 letters or numbers, like K7QMB.';
+      render();
+      return;
+    }
+    if (state.mode !== 'online') setMode('online');
+    if (!peerReady()) return;
+    teardown();
+    online.error = '';
+    state = freshState('online');
+    const peer = new Peer();
+    Object.assign(online, { code, seat: 'O', peer });
+    render();
+    peer.on('open', () => {
+      if (online.peer !== peer) return;
+      attach(peer.connect(PEER_PREFIX + code, { reliable: true }));
+    });
+    watchPeer(peer, code);
+  }
+
+  function leaveGame() {
+    teardown();
+    online.error = '';
+    state = freshState('online');
+    render();
+  }
+
+  function initOnline() {
+    const code = (location.hash || '').slice(1).toUpperCase();
+    if (/^[A-Z2-9]{5}$/.test(code)) joinGame(code);
+  }
+
+  window.addEventListener('pagehide', teardown);
+
+  $('create').addEventListener('click', () => createGame());
+  $('join-form').addEventListener('submit', (e) => { e.preventDefault(); joinGame($('join-code').value); });
+  $('leave').addEventListener('click', leaveGame);
+  $('copy').addEventListener('click', () => {
+    const el = $('invite-link'), btn = $('copy');
+    const done = () => { btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = 'Copy'; }, 1500); };
+    const fallback = () => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      btn.textContent = 'Press ⌘C / Ctrl+C';
+    };
+    try { navigator.clipboard.writeText(el.textContent).then(done, fallback); } catch { fallback(); }
+  });
+
+  // ---------- Game flow ----------
+  const vsCpu = () => state.mode === 'hard' || state.mode === 'easy';
+  const isOnline = () => state.mode === 'online';
+  const myOnlineTurn = () => isOnline() && online.connected && online.seat === state.turn && !state.result;
+  function nameOf(p) {
+    if (vsCpu()) return p === 'X' ? 'You' : 'Computer';
+    if (isOnline() && online.seat) return p === online.seat ? 'You' : 'Your friend';
+    return `Player ${p}`;
+  }
   const cpuTurn = () => vsCpu() && state.turn === 'O' && !state.result;
 
   function play(i) {
     if (state.result || state.board[i]) return;
+    if (isOnline() && !myOnlineTurn()) return;
+    state.board = [...state.board];
     state.board[i] = state.turn;
+    sounds.mark(state.turn);
     const r = outcome(state.board);
     if (r) {
       state.result = r;
+      state.score = { ...state.score };
       if (r.winner) state.score[r.winner]++;
       else state.score.draw++;
+      resultSound(r);
     } else {
       state.turn = state.turn === 'X' ? 'O' : 'X';
     }
     render({ animate: i });
-    scheduleCpu();
+    if (isOnline()) sendState();
+    else scheduleCpu();
   }
 
   function scheduleCpu() {
@@ -285,16 +673,29 @@
   }
 
   function newRound() {
+    if (isOnline() && !online.connected) return;
     state.starter = state.starter === 'X' ? 'O' : 'X';
     state.board = Array(9).fill(null);
     state.turn = state.starter;
     state.result = null;
     render();
-    scheduleCpu();
+    if (isOnline()) sendState();
+    else scheduleCpu();
+  }
+
+  function resetScore() {
+    if (isOnline() && !online.connected) return;
+    state.score = { X: 0, O: 0, draw: 0 };
+    render();
+    if (isOnline()) sendState();
   }
 
   function setMode(mode) {
     clearTimeout(cpuTimer);
+    if (state && isOnline()) {
+      teardown();
+      online.error = '';
+    }
     state = freshState(mode);
     render();
   }
@@ -318,10 +719,39 @@
     return `<svg viewBox="0 0 ${x} 22" width="${x}">${lines}</svg>`;
   }
 
+  function renderOnlinePanel() {
+    const on = isOnline();
+    $('online').hidden = !on;
+    if (!on) return;
+    const inGame = Boolean(online.code);
+    const waiting = inGame && online.seat === 'X' && online.ready && !online.connected;
+    $('lobby').hidden = inGame;
+    $('invite').hidden = !waiting;
+    $('ingame').hidden = !inGame;
+    if (waiting) {
+      $('invite-link').textContent = `${location.href.split('#')[0]}#${online.code}`;
+      $('invite-code').textContent = online.code;
+    }
+    if (inGame) {
+      const v = $('versus');
+      v.textContent = '';
+      v.append(`Game ${online.code} · You’re `);
+      const s = document.createElement('strong');
+      s.textContent = online.seat;
+      v.append(s);
+      if (online.connected) v.append(' · Connected');
+    }
+    const err = $('online-error');
+    err.hidden = !online.error;
+    err.textContent = online.error;
+  }
+
   function render({ animate = -1 } = {}) {
     document.querySelectorAll('.modes button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
+    renderOnlinePanel();
 
     const r = state.result;
+    const onlineLocked = isOnline() && !myOnlineTurn();
     cellsEl.innerHTML = '';
     state.board.forEach((v, i) => {
       const btn = document.createElement('button');
@@ -330,7 +760,7 @@
       btn.id = `cell-${i}`;
       btn.dataset.i = i;
       btn.setAttribute('aria-label', `Row ${Math.floor(i / 3) + 1}, column ${(i % 3) + 1}, ${v || 'empty'}`);
-      btn.disabled = Boolean(v || r || cpuTurn());
+      btn.disabled = Boolean(v || r || cpuTurn() || onlineLocked);
       if (v) btn.innerHTML = markSvg(v, i === animate);
       if (r && r.line && !r.line.includes(i)) btn.classList.add('dim');
       cellsEl.appendChild(btn);
@@ -350,35 +780,47 @@
     }
 
     const tag = (p) => `<span class="${p.toLowerCase()}">${p}</span>`;
-    if (r) {
+    const opp = 'Your friend';
+    if (isOnline() && !online.code) {
+      statusEl.innerHTML = 'Play a friend on another device';
+    } else if (isOnline() && !online.connected) {
+      statusEl.innerHTML = online.seat === 'O' ? 'Connecting…' : online.ready ? 'Waiting for a friend to join…' : 'Setting up your game…';
+    } else if (r) {
       if (!r.winner) statusEl.innerHTML = 'Cat’s game. It’s a draw.';
       else if (vsCpu()) statusEl.innerHTML = r.winner === 'X' ? `You win! ${tag('X')}` : `Computer wins ${tag('O')}`;
+      else if (isOnline() && online.seat) statusEl.innerHTML = r.winner === online.seat ? `You win! ${tag(r.winner)}` : `${opp} wins ${tag(r.winner)}`;
       else statusEl.innerHTML = `Player ${tag(r.winner)} wins!`;
     } else if (cpuTurn()) {
-      statusEl.innerHTML = `Computer is thinking…`;
+      statusEl.innerHTML = 'Computer is thinking…';
     } else if (vsCpu()) {
       statusEl.innerHTML = `Your move (${tag('X')})`;
+    } else if (isOnline() && online.seat) {
+      statusEl.innerHTML = state.turn === online.seat ? `Your move (${tag(online.seat)})` : `${opp}’s move…`;
     } else {
       statusEl.innerHTML = `${tag(state.turn)} to move`;
     }
 
     const s = state.score;
-    scoreEl.innerHTML = [
-      ['x', nameOf('X'), s.X],
-      ['', 'Draws', s.draw],
-      ['o', nameOf('O'), s.O],
-    ].map(([cls, label, n]) => `
-      <div class="tally ${cls}">
-        <span class="label">${label}</span>
-        <span class="count">${n}</span>
-        ${tallySvg(n)}
-      </div>`).join('');
+    scoreEl.innerHTML = '';
+    [['x', nameOf('X'), s.X], ['', 'Draws', s.draw], ['o', nameOf('O'), s.O]].forEach(([cls, label, n]) => {
+      const div = document.createElement('div');
+      div.className = `tally ${cls}`;
+      div.innerHTML = `<span class="label"></span><span class="count">${n}</span>${tallySvg(n)}`;
+      div.querySelector('.label').textContent = cls ? `${label} (${cls.toUpperCase()})` : label;
+      scoreEl.appendChild(div);
+    });
+
+    const canControl = !isOnline() || online.connected;
+    $('next').hidden = !canControl;
+    $('reset').hidden = !canControl;
 
     hintEl.textContent = state.mode === 'hard'
       ? 'This computer never loses. The best you can do is a draw.'
       : state.mode === 'easy'
         ? 'This computer plays loosely. You can beat it.'
-        : 'Pass the device back and forth. Who starts alternates each round.';
+        : state.mode === 'pvp'
+          ? 'Pass the device back and forth. Who starts alternates each round.'
+          : 'Your friend only needs the link, no account. Keep this page open while you play.';
   }
 
   cellsEl.addEventListener('click', (e) => {
@@ -399,21 +841,25 @@
     const j = i + moves[e.key];
     if (j < 0 || j > 8 || (Math.abs(moves[e.key]) === 1 && Math.floor(j / 3) !== Math.floor(i / 3))) return;
     e.preventDefault();
-    const target = $(`cell-${j}`);
-    target.focus();
+    $(`cell-${j}`).focus();
   });
 
-  document.querySelectorAll('.modes button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  document.querySelectorAll('.modes button').forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.mode !== state.mode) setMode(b.dataset.mode);
+  }));
   $('next').addEventListener('click', newRound);
-  $('reset').addEventListener('click', () => { state.score = { X: 0, O: 0, draw: 0 }; render(); });
+  $('reset').addEventListener('click', resetScore);
 
   function start(data) {
-    state = data && Array.isArray(data.board) && data.board.length === 9 ? data : freshState();
+    const ok = data && Array.isArray(data.board) && data.board.length === 9 && data.mode !== 'online';
+    state = ok ? data : freshState();
+    renderMute();
     render();
     scheduleCpu();
+    initOnline();
   }
 
-  window.claude?.hot?.snapshot?.(() => state);
+  window.claude?.hot?.snapshot?.(() => (state && state.mode !== 'online' ? state : {}));
   window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
 </script>
